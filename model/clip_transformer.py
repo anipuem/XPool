@@ -16,6 +16,7 @@ class CLIPTransformer(nn.Module):
             self.clip = load_clip(config.clip_arch)
 
         config.pooling_type = 'transformer'
+        # 通过text对video每一帧做attention
         self.pool_frames = Transformer(config)
 
 
@@ -24,7 +25,8 @@ class CLIPTransformer(nn.Module):
         text_data = data['text']
         video_data = data['video']
         video_data = video_data.reshape(-1, 3, self.config.input_res, self.config.input_res)
-        
+
+        # 获得CLIP embedding后的text_features和video_features
         if self.config.huggingface:
             text_features = self.clip.get_text_features(**text_data)
             video_features = self.clip.get_image_features(video_data)
@@ -34,6 +36,7 @@ class CLIPTransformer(nn.Module):
    
         video_features = video_features.reshape(batch_size, self.config.num_frames, -1)
 
+        # video每帧的attention
         video_features_pooled = self.pool_frames(text_features, video_features)
             
         if return_all_frames:

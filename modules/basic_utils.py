@@ -41,10 +41,11 @@ def read_lines(filepath):
         return [e.strip("\n") for e in f.readlines()]
 
 
-def mkdirp(p):
+def mkdirp(p):  # 如果p不存在，则创建p
     if not os.path.exists(p):
         os.makedirs(p)
 
-def deletedir(p):
+
+def deletedir(p):  # 递归删除文件夹下的所有子文件夹和子文件，包括p本身也会删除
     if os.path.exists(p):
         shutil.rmtree(p)

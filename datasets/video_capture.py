@@ -59,7 +59,8 @@ class VideoCapture:
 
         while len(frames) < num_frames:
             frames.append(frames[-1].clone())
-            
+
+        # 在读取的时候就实现像素归一化∈[0,1]
         frames = torch.stack(frames).float() / 255
         cap.release()
         return frames, frame_idxs

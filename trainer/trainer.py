@@ -39,37 +39,51 @@ class Trainer(BaseTrainer):
         total_loss = 0.0
         num_steps = len(self.train_data_loader)
         eval_steps = np.linspace(0, num_steps-1, self.evals_per_epoch+1, dtype=int)[1:]
-        
+
+        # 从train_data_loader中批量取data
         for batch_idx, data in enumerate(self.train_data_loader):
             # then assume we must tokenize the input, e.g. its a string
             if self.tokenizer is not None:
                 data['text'] = self.tokenizer(data['text'], return_tensors='pt', padding=True,
                                               truncation=True)
-            if isinstance(data['text'], torch.Tensor):
+            if isinstance(data['text'], torch.Tensor):  # 如果data['text']是torch.Tensor类型
                 data['text'] = data['text'].to(self.device)
             else:
                 data['text'] = {key: val.to(self.device) for key, val in data['text'].items()}
             
             data['video'] = data['video'].to(self.device)
 
+            # model输出text和video_frames_pooled(通过text)的embed结果
             text_embeds, video_embeds_pooled = self.model(data)
+            # 计算相似度
             output = sim_matrix_training(text_embeds, video_embeds_pooled, self.pooling_type)
             
             loss = self.loss(output, self.model.clip.logit_scale)
             loss.backward()
-            
+
+            # 避免梯度爆炸，对model网络在反向传播过程中做梯度剪裁
+            # 所有反向传播的梯度变为原本的rate= max_norm/total_norm倍，total_norm为所有参数的梯度范数和
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
             self.optimizer.step()
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
             self.optimizer.zero_grad()
 
+            # 限制张量每个元素的上限为max值，clamp_修改并付给自身，即不需要返回值
             torch.clamp_(self.model.clip.logit_scale.data, max=np.log(100))
 
             self.global_step += 1
             if self.writer is not None:
+                # writer.add_scalar是通过循环不断传入参数来画线，输入为(表头tag，y轴坐标，x横轴坐标) 数据需要是标量
+                # 所以此处是为了保存每个training epoch的loss变换
+                # （https://www.bilibili.com/video/BV1L44y1H7eU/?spm_id_from=333.788.recommend_more_video.-1&vd_source=82147a599234a950fcee9ac0d1972385）
+                # 随后可以通过terminal cd到writer创建时声明的log_dir，通过tensorboard --logdir=logs来获得可以看到可视图的网址，logs是目录名
                 self.writer.add_scalar('train/loss_train', loss.detach().item(), self.global_step)
 
+            # 因为PyTorch采用动态图机制，通过tensor来构建图，tensor里包含反向传播的梯度信息，为了避免网络越跑，所占显存越大，把不需要包含梯度的变量取消梯度信息
+            # loss.detach()来获取不需要梯度回传的部分-->通过重新声明一个变量，指向原变量的存放位置，但是requires_grad变为False(没有grad_fn项)
+            # loss.item()直接获得对应的python数据类型-->即tensor(2.3391，device=，grad_fn=)直接变成2.3391
+            # 除了loss.backward()之外的loss调用通常都改成loss.item()
             total_loss += loss.detach().item()
 
             if batch_idx % self.log_step == 0:
@@ -93,6 +107,7 @@ class Trainer(BaseTrainer):
                 print(" Current Best Window Average R@1 is {}".format(self.best_window))
                 print(" Current Best R@1 is {}\n\n".format(self.best))
 
+        # 返回该epoch内的目前平均loss
         res = {
             'loss_train':  total_loss / num_steps
         }

@@ -7,24 +7,33 @@ import scipy.stats
 def sim_matrix_training(text_embeds, vid_embeds_pooled, pooling_type):
     """
     Computes the similarity matrix using pooled video frames
+    text_embeds: num_texts x embed_dim
+    video_embeds: num_vids x num_texts x embed_dim
     
     Output
         sims: num_texts x num_vids
     """
+    # 归一化，除以各自的模
     text_embeds = text_embeds / text_embeds.norm(dim=-1, keepdim=True)
     vid_embeds_pooled = vid_embeds_pooled / vid_embeds_pooled.norm(dim=-1, keepdim=True)
 
     if pooling_type == 'avg':
+        # 通过矩阵相乘计算矩阵相似度（通过余弦相似度计算,比如向量相似度a*b=|a||b|cosθ）--> 把一个矩阵中的每行看做一个行向量
+        #
+        # 三维矩阵x二维：将三维矩阵中的后两维组成的二维子矩阵分别与二维矩阵相乘（二维），结果再按原顺序拼接起来（三维）
         sims = torch.mm(text_embeds, vid_embeds_pooled.t())
         
     else:
         # num_texts x embed_dim x num_vids
-        vid_embeds_pooled = vid_embeds_pooled.permute(1,2,0)
-        # num_texts x 1 x embed_dim
+        vid_embeds_pooled = vid_embeds_pooled.permute(1, 2, 0)  # 交换维度，原来维度按照(0,1,2)的顺序-->(1,2,0)
+        # dim=a，就是在维度为a的位置扩充维数为1的维度-->num_texts x 1 x embed_dim
         text_embeds = text_embeds.unsqueeze(1)
-        
-        sims = torch.bmm(text_embeds, vid_embeds_pooled).squeeze(1)
-
+        # 第一维相同的矩阵乘法, 保证第一维不变，每次切片做2D矩阵乘法--> tensorA (b,h,w), tensorB (b,w,m)-->输出维度（b,h,m）
+        # 能够计算余弦相似度 (h,w)x(w,m)-->(h,m)第一行代表的是 arr1 中的第一行和 arr2 中的每一行的余弦相似度
+        # 第二行代表的是 arr1 中的第二行和 arr2 中每一行的余弦相似度
+        #  num_texts x 1 x num_vids
+        sims = torch.bmm(text_embeds, vid_embeds_pooled).squeeze(1)  # 去掉tensor中维数为1的维度dim=a
+    #  num_texts x num_vids
     return sims
 
 
@@ -110,9 +119,9 @@ def generate_embeds_per_video_id(text_embeds, vid_embeds_pooled, all_vid_ids, po
 
 
 def t2v_metrics(sims):
-    # Permute sims so it represents a sequence of text-video similarity matrices.
+    # 对sims做排序，使其表示文本-视频相似性矩阵的序列a sequence of text-video similarity matrices.
     # Then obtain the double argsort to position the rank on the diagonal
-    stacked_sims = sims.permute(1,0,2)
+    stacked_sims = sims.permute(1, 0, 2)
     
     sims_sort = torch.argsort(stacked_sims, dim=-1, descending=True)
     sims_sort_2 = torch.argsort(sims_sort, dim=-1, descending=False)

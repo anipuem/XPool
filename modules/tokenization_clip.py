@@ -142,9 +142,11 @@ class SimpleTokenizer(object):
             tokens.extend(bpe_token for bpe_token in self.bpe(token).split(' '))
         return tokens
 
+    # 将每个token映射为id
     def convert_tokens_to_ids(self, tokens):
         return [self.encoder[bpe_token] for bpe_token in tokens]
 
+    # 在类像被函数一样调用的时候执行__call__方法
     def __call__(self, texts, return_tensors='pt', padding=True, truncation=True):
         """
             Returns the tokenized representation of given input string(s)

@@ -1,9 +1,14 @@
 from abc import abstractmethod, ABC
+# *类是从一堆*对象中抽取相同的内容而来的，那么*抽象类就是从一堆*类中抽取相同的内容而来的，内容包括数据属性和函数属性
+# 通过：
+#   1. 所在的 class 继承 abc.ABC
+#   2. 给需要抽象的实例方法添加装饰器 @abstractmethod
+# class 就变成了抽象类, 不能被直接实例化, 要想使用抽象类, 必须继承该类，并实现(重写)该类的所有抽象方法(函数)
 
 
-class Config(ABC):
+class Config(ABC):  # 抽象类Config是用来继承的，而不是用来实例化的
     def __init__(self):
-        args = self.parse_args()
+        args = self.parse_args()  # 调用类的parse_args()函数
         
         self.dataset_name = args.dataset_name
         self.videos_dir = args.videos_dir
@@ -46,7 +51,7 @@ class Config(ABC):
         self.no_tensorboard = args.no_tensorboard
         self.tb_log_dir = args.tb_log_dir
 
-   
+    # 通过@abstractmethod定义抽象方法，而无需实现其功能
     @abstractmethod
     def parse_args(self):
         raise NotImplementedError

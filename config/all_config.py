@@ -8,11 +8,14 @@ class AllConfig(Config):
     def __init__(self):
         super().__init__()
 
-    def parse_args(self):
+    # argparse模块的作用是用于解析命令行参数
+    def parse_args(self):  # 继承抽象类后，需要重写所有抽象方法，随后AllConfig类才可以被实例化
+        # 创建一个 ArgumentParser 解析对象
         description = 'Text-to-Video Retrieval'
         parser = argparse.ArgumentParser(description=description)
-        
-        # data parameters
+
+        # 向parser对象中添加关注的命令行参数和选项，每一个add_argument方法对应一个关注的参数或选项
+        # data parameters， type - 命令行参数应当被转换成的类型
         parser.add_argument('--dataset_name', type=str, default='MSRVTT', help="Dataset name")
         parser.add_argument('--videos_dir', type=str, default='data/MSRVTT/vids', help="Location of videos")
         parser.add_argument('--msrvtt_train_file', type=str, default='9k')
@@ -58,13 +61,14 @@ class AllConfig(Config):
         parser.add_argument('--no_tensorboard', action='store_true', default=False)
         parser.add_argument('--tb_log_dir', type=str, default='logs')
 
+        # 解析：将命令行解析成 Python 数据类型
         args = parser.parse_args()
 
         args.model_path = os.path.join(args.output_dir, args.exp_name)
         args.tb_log_dir = os.path.join(args.tb_log_dir, args.exp_name)
 
         mkdirp(args.model_path)
-        deletedir(args.tb_log_dir)
+        deletedir(args.tb_log_dir)  # 删除当先有的log
         mkdirp(args.tb_log_dir)
 
         return args

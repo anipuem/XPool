@@ -45,12 +45,11 @@ class BaseTrainer:
         """
         raise NotImplementedError
 
-
     def train(self):
-        for epoch in range(self.start_epoch, self.num_epochs + 1):
+        for epoch in range(self.start_epoch, self.num_epochs + 1):  # epoch从1开始算
             result = self._train_epoch(epoch)
-            if epoch % self.config.save_every == 0:
-                    self._save_checkpoint(epoch, save_best=False)
+            if epoch % self.config.save_every == 0:  # epoch是config.save_every整数倍的时候，保存模型参数
+                self._save_checkpoint(epoch, save_best=False)
 
     def validate(self):
         self._valid_epoch_step(0,0,0)
